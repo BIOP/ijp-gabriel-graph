@@ -12,11 +12,10 @@
 		<relativePath />
 	</parent>
 
-	<groupId>sc.fiji</groupId>
-	<artifactId>Process_Pixels</artifactId>
+	<artifactId>Process_DA_Pixels</artifactId>
 	<version>0.1.0-SNAPSHOT</version>
 
-	<name>plugins/Process_Pixels.jar</name>
+	<name>plugins/Process_DA_Pixels.jar</name>
 	<description>A Maven project implementing an ImageJ 1.x plugin</description>
 
 	<developers>
@@ -36,14 +35,12 @@
 	</developers>
 
 	<scm>
-		<connection>scm:git:git://github.com/imagej/minimal-ij1-plugin</connection>
-		<developerConnection>scm:git:git@github.com:imagej/minimal-ij1-plugin</developerConnection>
 		<tag>HEAD</tag>
-		<url>https://github.com/imagej/minimal-ij1-plugin</url>
+		<url>https://git.epfl.ch/repo/ij-minimal-biop-plugin.git</url>
 	</scm>
 
 	<properties>
-		<main-class>Process_Pixels</main-class>
+		<main-class>Process_DA_Pixels</main-class>
 	</properties>
 
 	<dependencies>
@@ -68,4 +65,5 @@
 		</plugins>
 	</build>
 
+	<groupId>ch.epfl.biop</groupId>
 </project>
