@@ -68,7 +68,7 @@ public class Parallel_Roi_Creator implements PlugIn {
 						float radius	= diameter /2 ; 
 						//int cat_nbr 	= (int) Float.intBitsToFloat(imp_input.getProcessor().getPixel( 4,  i)) ;
 
-						IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius);
+						//IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius);
 
 						Roi roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;
 

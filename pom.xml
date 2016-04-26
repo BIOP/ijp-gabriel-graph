@@ -41,6 +41,7 @@
 
 	<properties>
 		<main-class>Parallel_Roi_Creator</main-class>
+		<imagej.app.directory>C:/Fiji.app/</imagej.app.directory>
 	</properties>
 
 	<dependencies>
