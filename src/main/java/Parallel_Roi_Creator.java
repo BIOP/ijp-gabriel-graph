@@ -43,23 +43,29 @@ public class Parallel_Roi_Creator implements PlugIn {
 
 
 		boolean		is_cat = false ;														//	because of parallel processing we have to declare a the temporary variables 
-		String[] 	temp_cat_names_array = new String[1] ;									//	is_cat and temp_cat_names_array. 
-
+		String[] 	temp_suffix_array = new String[1] ;									//	is_cat and temp_cat_names_array. 
+		String 		temp_prefix = "" ;
+		
 		if (roi_coord_imp.getWidth() > 3 ){													//	if the image contains more than 3 columns
 			GenericDialog gd = new GenericDialog("Parameters");								//	Create a generic dialog 
-			gd.addStringField("ROIs categories (comma separated, more than 4 charac.)", "");//	to get the index of the names of the ROIs 
+			gd.addStringField("ROIs prefix (limited to 1)", "");
+			gd.addStringField("ROIs suffix(es) (list separated by comma) ", "");//	to get the index of the names of the ROIs 
+			gd.addMessage("NB : prefix and suffix should be more than 4 characters long");
 			gd.showDialog();																//	(the pixel value should correspond to the position in the comma separated list above.)
 			if (gd.wasCanceled())  return ; 												//	to handle cancellation
-
-			String	cat_names	= gd.getNextString();										//	get the entered String.
-			if ( !cat_names.isEmpty() ) {													//	if it's not empty and the image contains more than 3 columns
-				temp_cat_names_array = cat_names.split(",");								//	we split the string into an array
+			
+			  		temp_prefix	= gd.getNextString();
+			String	temp_suffix	= gd.getNextString();										//	get the entered String.
+			
+			if ( !temp_suffix.isEmpty() ) {													//	if it's not empty and the image contains more than 3 columns
+				temp_suffix_array = temp_suffix.split(",");								//	we split the string into an array
 				is_cat = true ;																//	and defines is_cat as true
 			}
 		}
 		final boolean use_cat = is_cat;														//	make the final variables from the temporary ones
-		final String[] cat_names_array = temp_cat_names_array;								// 				
-
+		final String[]	suffix_array = temp_suffix_array;								// 				
+		final String 	prefix = temp_prefix;
+		
 		if ( RoiManager.getInstance() == null )	new RoiManager(); 							//  if the ROI Manager is not open, open it!
 		final RoiManager	rm 	=	RoiManager.getInstance();								//	and get it as rm
 
@@ -89,12 +95,14 @@ public class Parallel_Roi_Creator implements PlugIn {
 						float diameter 	=  		Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 2,  i)) ; 	// diameter is a float keep it as a float
 						float radius	= diameter /2 ; 																// define radius	
 
-						String roi_name = "ROI-"+IJ.pad(i,6) ;															// otherwise by default the name will be ROI-nbr																			
+						String roi_name ;																																							
 						if (use_cat){																					// but if we use cat_name from column
 							int cat_nbr = (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 3,  i)) ; 	// from the image get the index in the list of name
-							roi_name 	= roi_name+"-"+cat_names_array[cat_nbr]; 										// here, we use 1st the number of the ROI, then its name beacauzse of sorting at the end
+							roi_name 	= prefix+"-"+IJ.pad((i+1),6)+"-"+suffix_array[cat_nbr]; 							// here, we use 1st the number of the ROI, then its name beacauzse of sorting at the end
+						}else{
+							roi_name = "ROI-"+IJ.pad(i,6);																// otherwise by default the name will be ROI-nbr
 						}
-						IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius+ ", name "+roi_name);
+						//IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius+ ", name "+roi_name);
 						
 						Roi roi;						
 						if (Float.isNaN(diameter)){
