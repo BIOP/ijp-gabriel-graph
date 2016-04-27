@@ -29,14 +29,12 @@ import ij.process.ImageProcessor;
  */
 public class Parallel_Roi_Creator implements PlugIn {  
 	
-	
-	
 	public void run(String arg) {  
+																						//	we want that plugin to be able to Name the created ROI with different/custom names
+		boolean is_cat = false ;														//	because of parrallel processing we have to declare a the temporary variables 
+		String[] temp_cat_names_array = new String[1] ;									//	is_cat and temp_cat_names_array. 
 		
-		boolean is_cat = false ;
-		String[] temp_cat_names_array = new String[1] ;
-		
-		String[] image_list = WindowManager.getImageTitles();
+		String[] image_list = WindowManager.getImageTitles();							//	check if two images are open
 		if (image_list.length < 2)	{
 			IJ.error("You need 2 images 'son' !"); // quit so no else required ! 
 		}
