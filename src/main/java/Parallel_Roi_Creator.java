@@ -23,67 +23,50 @@ import ij.process.ImageProcessor;
 /**
  * Parallel_Roi_Creator
  *
- * A plugin to create ROIs in a parallel way.
+ * A pluggin that use and image to create at a define position, a circular ROIs with specified diameter and names, in a parallel way!
  *
- * @author Romain Guiet (from minimal plugin fiji crew! )
+ * @author Romain Guiet (from minimal plugin fiji crew! AND A LOT of help from Olivier Burri)
  */
 public class Parallel_Roi_Creator implements PlugIn {  
-	
-	public void run(String arg) {  
-																						//	we want that plugin to be able to Name the created ROI with different/custom names
-		boolean is_cat = false ;														//	because of parrallel processing we have to declare a the temporary variables 
-		String[] temp_cat_names_array = new String[1] ;									//	is_cat and temp_cat_names_array. 
-		
-		String[] image_list = WindowManager.getImageTitles();							//	check if two images are open
-		if (image_list.length < 2)	{
-			IJ.error("You need 2 images 'son' !"); // quit so no else required ! 
+
+	public void run(String arg) {
+		//	we want that pluggin to retrieve informations from the current image to create circular ROIs
+		//	each row corresponds to a ROI
+		//	each column contains informations 
+		// 		column 0 : x 
+		//		column 1 : y
+		//		column 2 : diameter
+		//		column 3 : an index that defines the name (from a list)
+		final ImagePlus roi_coord_imp 	= IJ.getImage();									//	get the active image
+		final int rows = roi_coord_imp.getHeight();											//	the number of ROI to create corresponds to the number of row
+
+
+		boolean		is_cat = false ;														//	because of parallel processing we have to declare a the temporary variables 
+		String[] 	temp_cat_names_array = new String[1] ;									//	is_cat and temp_cat_names_array. 
+
+		if (roi_coord_imp.getWidth() > 3 ){													//	if the image contains more than 3 columns
+			GenericDialog gd = new GenericDialog("Parameters");								//	Create a generic dialog 
+			gd.addStringField("ROIs categories (comma separated, more than 4 charac.)", "");//	to get the index of the names of the ROIs 
+			gd.showDialog();																//	(the pixel value should correspond to the position in the comma separated list above.)
+			if (gd.wasCanceled())  return ; 												//	to handle cancellation
+
+			String	cat_names	= gd.getNextString();										//	get the entered String.
+			if ( !cat_names.isEmpty() ) {													//	if it's not empty and the image contains more than 3 columns
+				temp_cat_names_array = cat_names.split(",");								//	we split the string into an array
+				is_cat = true ;																//	and defines is_cat as true
+			}
 		}
-		GenericDialog gd = new GenericDialog("Parameters");
-		gd.addChoice("Display ROIs on", image_list, image_list[0]);
-		gd.addChoice("ROIs coordinates", image_list, image_list[1]);
-		gd.addStringField("ROIs categories (comma separated)", "");
-		gd.showDialog();
-		
-		if (gd.wasCanceled()) {  
-			return ; 
-		}
-		
-		String display_img_name	 	= gd.getNextChoice();
-		String roi_coord_img_name 	= gd.getNextChoice();
-		String cat_names 			= gd.getNextString();
-		
-		final ImagePlus 	display_imp 	= WindowManager.getImage(display_img_name);
-		final ImagePlus 	roi_coord_imp 	= WindowManager.getImage(roi_coord_img_name);
-		
-		
-		if (!cat_names.isEmpty() && roi_coord_imp.getWidth() > 3 ) {
-			IJ.log("cat_names '"	+cat_names +"'"	);
-			temp_cat_names_array = cat_names.split(",");
-			is_cat = true ;
-		}
-		
-		final boolean use_cat = is_cat;
-		final String[] cat_names_array = temp_cat_names_array;
-		
-		if ( RoiManager.getInstance() == null ){ // " un peu du hack" ! to handle if roiManger is not open ! 
-			 new RoiManager();
-		} 
-		final RoiManager	rm 			=	RoiManager.getInstance();
+		final boolean use_cat = is_cat;														//	make the final variables from the temporary ones
+		final String[] cat_names_array = temp_cat_names_array;								// 				
 
-		/*
-		IJ.log("ori:"	+display_imp	);
-		IJ.log("input:"	+roi_coord_imp	);
-		*/
-		final int rows = roi_coord_imp.getHeight(); // number of ROI to create
-		//IJ.log("rows:"	+rows	);
+		if ( RoiManager.getInstance() == null )	new RoiManager(); 							//  if the ROI Manager is not open, open it!
+		final RoiManager	rm 	=	RoiManager.getInstance();								//	and get it as rm
 
-		final AtomicInteger ai = new AtomicInteger(0);
+		final	AtomicInteger 	ai 		= new AtomicInteger(0);								// for parallel processing, we need the ai
+		long					start	= System.currentTimeMillis();						// to measure the time required
+		final	Thread[] 		threads = newThreadArray();  								// create the thread array
 
-		long start=System.currentTimeMillis();
-
-		final Thread[] threads = newThreadArray();  
-
-		for (int ithread = 0; ithread < threads.length; ithread++) {  
+		for (int ithread = 0; ithread < threads.length; ithread++) {  						// 
 
 			// Concurrently run in as many threads as CPUs  
 
@@ -100,34 +83,32 @@ public class Parallel_Roi_Creator implements PlugIn {
 
 
 					for (int i = ai.getAndIncrement(); i < rows; i = ai.getAndIncrement()) {  
-						int x_center 	= (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 0,  i)) ;	// from the 
-						int y_center 	= (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 1,  i)) ;	//
-						float diameter 	=  		Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 2,  i)) ; 	// keep it as a float
-						float radius	= diameter /2 ; 
-						
-						String roi_name ;
-						if (use_cat){
-							int cat_nbr = (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 3,  i)) ; 	// from the iamge containing ROIs coordinates get the index 
-							roi_name 	= IJ.pad(i,6)+"-"+cat_names_array[cat_nbr]; 									// here, we use 1st the number of the ROI, then its name from the array cat_names_array
-						} else {
-							roi_name = "ROI-"+IJ.pad(i,6) ;
-						}
-						IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius+ ", name "+roi_name);
+						int x_center 	= (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 0,  i)) ;	// get x (pixel are float , convert it to int  )
+						int y_center 	= (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 1,  i)) ;	// and y 
+						float diameter 	=  		Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 2,  i)) ; 	// diameter is a float keep it as a float
+						float radius	= diameter /2 ; 																// define radius	
 
-						Roi roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;
-						roi.setName(roi_name);		
-						rm.addRoi(roi);				// before creating it
+						String roi_name = "ROI-"+IJ.pad(i,6) ;															// otherwise by default the name will be ROI-nbr																			
+						if (use_cat){																					// but if we use cat_name from column
+							int cat_nbr = (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 3,  i)) ; 	// from the image get the index in the list of name
+							roi_name 	= roi_name+"-"+cat_names_array[cat_nbr]; 										// here, we use 1st the number of the ROI, then its name beacauzse of sorting at the end
+						}
+						//IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius+ ", name "+roi_name);
+
+						Roi roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;			//	define the roi
+						roi.setName(roi_name);																			//	and set its name	
+						rm.addRoi(roi);																					//  before creating it
 					}
 				}};  
 		} 
 
 
-		startAndJoin(threads);  
-		long end=System.currentTimeMillis();    
-		IJ.log("Processing time convolution in msec: "+(end-start) );
+		startAndJoin(threads);				// DO THE MAGIC ! 
 
-		rm.runCommand("Sort"); 		// the parallel processing scrambles the order of the ROIs, so 
-		//rm.runCommand("Show All");
+		long end=System.currentTimeMillis(); 
+		IJ.log("ROI creation time in msec: "+(end-start) );
+
+		rm.runCommand("Sort"); 		// the parallel processing scrambles the order of the ROIs, so we sort them here.
 	}  
 
 
@@ -180,7 +161,7 @@ public class Parallel_Roi_Creator implements PlugIn {
 
 		// start ImageJ
 		new ImageJ();
-		// open the Clown sample
+		// open the blobs sample
 		ImagePlus image = IJ.openImage("http://imagej.net/images/blobs.gif");
 		image.show();
 
