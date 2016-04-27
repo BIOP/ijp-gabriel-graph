@@ -28,16 +28,56 @@ import ij.process.ImageProcessor;
  * @author Romain Guiet (from minimal plugin fiji crew! )
  */
 public class Parallel_Roi_Creator implements PlugIn {  
-
+	
+	
+	
 	public void run(String arg) {  
-		final RoiManager	rm 			= 	RoiManager.getInstance();
-		final ImagePlus 	imp_ori 	= 	WindowManager.getImage(1);
-		final ImagePlus 	imp_input 	= 	WindowManager.getImage(2);
-		IJ.log("ori:"	+imp_ori	);
-		IJ.log("input:"	+imp_input	);
+		
+		boolean is_cat = false ;
+		String[] temp_cat_names_array = new String[1] ;
+		
+		String[] image_list = WindowManager.getImageTitles();
+		if (image_list.length < 2)	{
+			IJ.error("You need 2 images 'son' !"); // quit so no else required ! 
+		}
+		GenericDialog gd = new GenericDialog("Parameters");
+		gd.addChoice("Display ROIs on", image_list, image_list[0]);
+		gd.addChoice("ROIs coordinates", image_list, image_list[1]);
+		gd.addStringField("ROIs categories (comma separated)", "");
+		gd.showDialog();
+		
+		if (gd.wasCanceled()) {  
+			return ; 
+		}
+		
+		String display_img_name	 	= gd.getNextChoice();
+		String roi_coord_img_name 	= gd.getNextChoice();
+		String cat_names 			= gd.getNextString();
+		
+		final ImagePlus 	display_imp 	= WindowManager.getImage(display_img_name);
+		final ImagePlus 	roi_coord_imp 	= WindowManager.getImage(roi_coord_img_name);
+		
+		
+		if (!cat_names.isEmpty() && roi_coord_imp.getWidth() > 3 ) {
+			IJ.log("cat_names '"	+cat_names +"'"	);
+			temp_cat_names_array = cat_names.split(",");
+			is_cat = true ;
+		}
+		
+		final boolean use_cat = is_cat;
+		final String[] cat_names_array = temp_cat_names_array;
+		
+		if ( RoiManager.getInstance() == null ){ // " un peu du hack" ! to handle if roiManger is not open ! 
+			 new RoiManager();
+		} 
+		final RoiManager	rm 			=	RoiManager.getInstance();
 
-		final int rows = imp_input.getHeight();
-		IJ.log("rows:"	+rows	);
+		/*
+		IJ.log("ori:"	+display_imp	);
+		IJ.log("input:"	+roi_coord_imp	);
+		*/
+		final int rows = roi_coord_imp.getHeight(); // number of ROI to create
+		//IJ.log("rows:"	+rows	);
 
 		final AtomicInteger ai = new AtomicInteger(0);
 
@@ -62,18 +102,23 @@ public class Parallel_Roi_Creator implements PlugIn {
 
 
 					for (int i = ai.getAndIncrement(); i < rows; i = ai.getAndIncrement()) {  
-						int x_center 	= (int) Float.intBitsToFloat(imp_input.getProcessor().getPixel( 0,  i)) ;
-						int y_center 	= (int) Float.intBitsToFloat(imp_input.getProcessor().getPixel( 1,  i)) ;
-						float diameter 	=  		Float.intBitsToFloat(imp_input.getProcessor().getPixel( 2,  i)) ; // keep it as a float
+						int x_center 	= (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 0,  i)) ;	// from the 
+						int y_center 	= (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 1,  i)) ;	//
+						float diameter 	=  		Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 2,  i)) ; 	// keep it as a float
 						float radius	= diameter /2 ; 
-						//int cat_nbr 	= (int) Float.intBitsToFloat(imp_input.getProcessor().getPixel( 4,  i)) ;
-
-						//IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius);
+						
+						String roi_name ;
+						if (use_cat){
+							int cat_nbr = (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 3,  i)) ; 	// from the iamge containing ROIs coordinates get the index 
+							roi_name 	= IJ.pad(i,6)+"-"+cat_names_array[cat_nbr]; 									// here, we use 1st the number of the ROI, then its name from the array cat_names_array
+						} else {
+							roi_name = "ROI-"+IJ.pad(i,6) ;
+						}
+						IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius+ ", name "+roi_name);
 
 						Roi roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;
-
-						roi.setName("ROI-"+IJ.pad(i,6) );
-						rm.addRoi(roi);							
+						roi.setName(roi_name);		
+						rm.addRoi(roi);				// before creating it
 					}
 				}};  
 		} 
@@ -83,8 +128,8 @@ public class Parallel_Roi_Creator implements PlugIn {
 		long end=System.currentTimeMillis();    
 		IJ.log("Processing time convolution in msec: "+(end-start) );
 
-		rm.runCommand("Sort");
-
+		rm.runCommand("Sort"); 		// the parallel processing scrambles the order of the ROIs, so 
+		//rm.runCommand("Show All");
 	}  
 
 
@@ -120,8 +165,6 @@ public class Parallel_Roi_Creator implements PlugIn {
 	}
 
 
-
-
 	/**
 	 * Main method for debugging.
 	 *
@@ -139,13 +182,11 @@ public class Parallel_Roi_Creator implements PlugIn {
 
 		// start ImageJ
 		new ImageJ();
-		RoiManager rm = new RoiManager();
-		rm.setVisible(true);
 		// open the Clown sample
 		ImagePlus image = IJ.openImage("http://imagej.net/images/blobs.gif");
 		image.show();
 
-		ImagePlus imageParam = IJ.openImage("I:/UsersProjects/Sophie_Wurth/Myelin_Axon_hug_Quantifier/ParalleleFit/TestRois/test.tif");
+		ImagePlus imageParam = IJ.openImage("I:/UsersProjects/Sophie_Wurth/Myelin_Axon_hug_Quantifier/ParalleleFit/TestRois/test_cat.tif");
 		imageParam.show();
 
 		// run the plugin
