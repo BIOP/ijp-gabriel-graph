@@ -14,6 +14,7 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.gui.OvalRoi;
+import ij.gui.PointRoi;
 import ij.gui.Roi;
 import ij.plugin.PlugIn;
 import ij.plugin.filter.PlugInFilter;
@@ -93,9 +94,16 @@ public class Parallel_Roi_Creator implements PlugIn {
 							int cat_nbr = (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 3,  i)) ; 	// from the image get the index in the list of name
 							roi_name 	= roi_name+"-"+cat_names_array[cat_nbr]; 										// here, we use 1st the number of the ROI, then its name beacauzse of sorting at the end
 						}
-						//IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius+ ", name "+roi_name);
-
-						Roi roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;			//	define the roi
+						IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius+ ", name "+roi_name);
+						
+						Roi roi;						
+						if (Float.isNaN(diameter)){
+							roi = new PointRoi( x_center , y_center) ;			//	define the roi as a point
+						}else{
+							roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;			//	define the roi
+						}
+						
+						
 						roi.setName(roi_name);																			//	and set its name	
 						rm.addRoi(roi);																					//  before creating it
 					}
@@ -170,5 +178,7 @@ public class Parallel_Roi_Creator implements PlugIn {
 
 		// run the plugin
 		IJ.runPlugIn(clazz.getName(), "");
+		//IJ.runPlugIn(clazz.getName(), "rois=categ1,categ2,categ3");
+		
 	}
 }
