@@ -6,6 +6,7 @@
  *     http://creativecommons.org/publicdomain/zero/1.0/
  */
 
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ij.IJ;
@@ -28,46 +29,45 @@ import ij.plugin.frame.RoiManager;
 public class Parallel_Roi_Creator implements PlugIn {  
 
 	public void run(String arg) {
-		//	we want that pluggin to retrieve informations from the current image to create circular ROIs
+		//	we want that plugin to retrieve informations from the current image to create ROIs
 		//	each row corresponds to a ROI
 		//	each column contains informations 
 		// 		column 0 : x 
 		//		column 1 : y
-		//		column 2 : diameter, if equal to NaN make a point instead of a circle
-		//		column 3 : an index that defines the name (from a list)
+		//		column 2 : diameter ( if equal to NaN make a point instead of a circle)
+		//		column 3 : an index that defines the name (from a list provided at the start of the plugin)
 		final ImagePlus roi_coord_imp 	= IJ.getImage();									//	get the active image
 		final int rows = roi_coord_imp.getHeight();											//	the number of ROI to create corresponds to the number of row
 
-
-		boolean		is_cat = false ;														//	because of parallel processing we have to declare a the temporary variables 
-		String[] 	temp_suffix_array = new String[1] ;									//	is_cat and temp_cat_names_array. 
+		boolean		is_custom_name = false ;												//	because of parallel processing we have to declare a the temporary variables 
+		String[] 	temp_suffix_array = new String[1] ;										//	is_custom_name , temp_suffix_array and temp_prefix
 		String 		temp_prefix = "" ;
 
 		if (roi_coord_imp.getWidth() > 3 ){													//	if the image contains more than 3 columns
 			GenericDialog gd = new GenericDialog("Parameters");								//	Create a generic dialog 
-			gd.addStringField("ROIs prefix (limited to 1)", "");
-			gd.addStringField("ROIs suffix(es) (list separated by comma) ", "");//	to get the index of the names of the ROIs 
+			gd.addStringField("ROIs_prefix (limited to 1)", "");							//	get  1 prefix
+			gd.addStringField("ROIs_suffixes (list separated by comma)", "");			//	get a list of suffixes (the pixel value should correspond to the position in the comma separated list above.)
 			gd.addMessage("NB : prefix and suffix should be more than 4 characters long");
-			gd.showDialog();																//	(the pixel value should correspond to the position in the comma separated list above.)
+			gd.showDialog();																//	
 			if (gd.wasCanceled())  return ; 												//	to handle cancellation
 
-			temp_prefix	= gd.getNextString();
-			String	temp_suffix	= gd.getNextString();										//	get the entered String.
+					temp_prefix	= gd.getNextString();										//	get the entered prefix String.
+			String	temp_suffix	= gd.getNextString();										//	get the entered suffix String.
 
-			if ( !temp_suffix.isEmpty() ) {													//	if it's not empty and the image contains more than 3 columns
-				temp_suffix_array = temp_suffix.split(",");								//	we split the string into an array
-				is_cat = true ;																//	and defines is_cat as true
+			if ( !temp_suffix.isEmpty() ) {													//	if temp_suffix is not empty 
+				temp_suffix_array = temp_suffix.split(",");									//	we split the string into an array
+				is_custom_name = true ;														//	and defines is_custom_name as true
 			}
 		}
-		final boolean use_cat = is_cat;														//	make the final variables from the temporary ones
-		final String[]	suffix_array = temp_suffix_array;								// 				
-		final String 	prefix = temp_prefix;
-
+		final boolean 	use_custom_name 	= is_custom_name;								//	make the final variables from the temporary ones
+		final String 	prefix 		= temp_prefix;											//
+		final String[]	suffix_array= temp_suffix_array;									// 				
+														
 		if ( RoiManager.getInstance() == null )	new RoiManager(); 							//  if the ROI Manager is not open, open it!
 		final RoiManager	rm 	=	RoiManager.getInstance();								//	and get it as rm
 
 		final	AtomicInteger 	ai 		= new AtomicInteger(0);								// for parallel processing, we need the ai
-		long					start	= System.currentTimeMillis();						// to measure the time required
+		long					start	= System.currentTimeMillis();						// use this to measure the time required for the processing
 		final	Thread[] 		threads = newThreadArray();  								// create the thread array
 
 		for (int ithread = 0; ithread < threads.length; ithread++) {  						// 
@@ -85,35 +85,34 @@ public class Parallel_Roi_Creator implements PlugIn {
 					// has a unique 'i' number to work with  
 					// and to use as index in the results array:  
 
-
 					for (int i = ai.getAndIncrement(); i < rows; i = ai.getAndIncrement()) {  
+																														// RETRIEVE informations
 						int x_center 	= (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 0,  i)) ;	// get x (pixel are float , convert it to int  )
 						int y_center 	= (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 1,  i)) ;	// and y 
 						float diameter 	=  		Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 2,  i)) ; 	// diameter is a float keep it as a float
 						float radius	= diameter /2 ; 																// define radius	
-
-						String roi_name ;																																							
-						if (use_cat){																					// but if we use cat_name from column
-							int cat_nbr = (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 3,  i)) ; 	// from the image get the index in the list of name
-							roi_name 	= prefix+"-"+IJ.pad((i+1),6)+"-"+suffix_array[cat_nbr]; 							// here, we use 1st the number of the ROI, then its name beacauzse of sorting at the end
+						
+						
+						Roi roi;																						// CREATE THE ROI
+						if (Float.isNaN(diameter)){																		// -TYPE : if diameter is NaN make a point otherwise a circle 
+							roi = new PointRoi( x_center , y_center) ;													//	defines the ROI as a point
+						}else{																							//  otherwise
+							roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;			//	defines the ROI as a circle
+						}
+						
+						String roi_name ;																				// - NAME:																			
+						if (use_custom_name){																			// if we use_custom_name from column
+							int suffix_index = (int) Float.intBitsToFloat(roi_coord_imp.getProcessor().getPixel( 3,  i)) ; 	// from the image get the suffix_index
+							roi_name 	= prefix+"-"+IJ.pad((i+1),6)+"-"+suffix_array[suffix_index]; 					// prefix- number of the ROI- suffix , for efficient end sorting.
 						}else{
 							roi_name = "ROI-"+IJ.pad(i,6);																// otherwise by default the name will be ROI-nbr
 						}
 						//IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius+ ", name "+roi_name);
-
-						Roi roi;						
-						if (Float.isNaN(diameter)){
-							roi = new PointRoi( x_center , y_center) ;													//	define the roi as a point
-						}else{
-							roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;			//	define the roi as a circle
-						}
-
-						roi.setName(roi_name);																			//	and set its name	
+						roi.setName(roi_name);																			//	Set the name	
 						rm.addRoi(roi);																					//  before creating it
 					}
 				}};  
 		} 
-
 
 		startAndJoin(threads);				// DO THE MAGIC ! 
 
@@ -174,15 +173,41 @@ public class Parallel_Roi_Creator implements PlugIn {
 		// start ImageJ
 		new ImageJ();
 		// open the blobs sample
-		ImagePlus image = IJ.openImage("http://imagej.net/images/blobs.gif");
+		ImagePlus  image = IJ.openImage("http://imagej.net/images/blobs.gif");						// open blobs
+		
+		IJ.run(image, "Gaussian Blur...", "sigma=1");												// blur and invert
+		IJ.run(image, "Invert LUT", "");
 		image.show();
-
-		ImagePlus imageParam = IJ.openImage("I:/UsersProjects/Sophie_Wurth/Myelin_Axon_hug_Quantifier/ParalleleFit/TestRois/test_cat.tif");
+		
+		IJ.run(image, "Find Maxima...", "noise=50 output=[Point Selection]");						// find local maxima on blobs and get their coordinates
+		Roi all_local_maxima_roi = (PointRoi) image.getRoi();
+		int[] x_coord = all_local_maxima_roi.getPolygon().xpoints;
+		int[] y_coord = all_local_maxima_roi.getPolygon().ypoints;
+		
+		int[] mean_intensity = new int[x_coord.length];												// for each local maxima store the pixel intensities in an array
+		for (int  i = 0; i < x_coord.length; i++) {
+			mean_intensity[i] = (int) image.getProcessor().getPixel( x_coord[i],  y_coord[i]) ;
+		}
+		
+		
+		ImagePlus imageParam = IJ.createImage("imageParam", "8-bit black", 4, x_coord.length, 1);	// make a new image 
+		Random rd = new Random();																	
+		for (int  i = 0; i < x_coord.length; i++) {													// store the parameters in each column 	
+			imageParam.getProcessor().set(0,i, x_coord[i]					);
+			imageParam.getProcessor().set(1,i, y_coord[i]					);
+			imageParam.getProcessor().set(2,i, (mean_intensity[i] / 5)		);
+			imageParam.getProcessor().set(3,i, rd.nextInt(3) 				);
+		}
+		IJ.run(imageParam, "32-bit", "");															// convert the image to a 32-bit
 		imageParam.show();
-
-		// run the plugin
-		IJ.runPlugIn(clazz.getName(), "");
-		//IJ.runPlugIn(clazz.getName(), "rois=categ1,categ2,categ3");
-
+		
+		
+																									// run the plugin with
+		//IJ.runPlugIn(clazz.getName(), "");																//  - dialog
+		IJ.run("Parallel Roi Creator", "rois_prefix=metaroi rois_suffixes=category1,category2,category3");	//  - predefined roiNames
+		//IJ.runPlugIn(imageParam, clazz.getName(), "rois_prefix=[metaroi] rois_suffixes=[category1,category2,category3]"); // doesn't work and we do not know why! 
+		
+	
+			
 	}
 }
