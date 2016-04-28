@@ -11,20 +11,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
-import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.gui.OvalRoi;
 import ij.gui.PointRoi;
 import ij.gui.Roi;
 import ij.plugin.PlugIn;
-import ij.plugin.filter.PlugInFilter;
 import ij.plugin.frame.RoiManager;
-import ij.process.ImageProcessor;
 
 /**
  * Parallel_Roi_Creator
  *
- * A pluggin that use and image to create at a define position, a circular ROIs with specified diameter and names, in a parallel way!
+ * A pluggin that use and image to create at a define position, a circular ROIs with specified diameter and names (or a point), in a parallel way!
  *
  * @author Romain Guiet (from minimal plugin fiji crew! AND A LOT of help from Olivier Burri)
  */
@@ -36,7 +33,7 @@ public class Parallel_Roi_Creator implements PlugIn {
 		//	each column contains informations 
 		// 		column 0 : x 
 		//		column 1 : y
-		//		column 2 : diameter
+		//		column 2 : diameter, if equal to NaN make a point instead of a circle
 		//		column 3 : an index that defines the name (from a list)
 		final ImagePlus roi_coord_imp 	= IJ.getImage();									//	get the active image
 		final int rows = roi_coord_imp.getHeight();											//	the number of ROI to create corresponds to the number of row
@@ -45,7 +42,7 @@ public class Parallel_Roi_Creator implements PlugIn {
 		boolean		is_cat = false ;														//	because of parallel processing we have to declare a the temporary variables 
 		String[] 	temp_suffix_array = new String[1] ;									//	is_cat and temp_cat_names_array. 
 		String 		temp_prefix = "" ;
-		
+
 		if (roi_coord_imp.getWidth() > 3 ){													//	if the image contains more than 3 columns
 			GenericDialog gd = new GenericDialog("Parameters");								//	Create a generic dialog 
 			gd.addStringField("ROIs prefix (limited to 1)", "");
@@ -53,10 +50,10 @@ public class Parallel_Roi_Creator implements PlugIn {
 			gd.addMessage("NB : prefix and suffix should be more than 4 characters long");
 			gd.showDialog();																//	(the pixel value should correspond to the position in the comma separated list above.)
 			if (gd.wasCanceled())  return ; 												//	to handle cancellation
-			
-			  		temp_prefix	= gd.getNextString();
+
+			temp_prefix	= gd.getNextString();
 			String	temp_suffix	= gd.getNextString();										//	get the entered String.
-			
+
 			if ( !temp_suffix.isEmpty() ) {													//	if it's not empty and the image contains more than 3 columns
 				temp_suffix_array = temp_suffix.split(",");								//	we split the string into an array
 				is_cat = true ;																//	and defines is_cat as true
@@ -65,7 +62,7 @@ public class Parallel_Roi_Creator implements PlugIn {
 		final boolean use_cat = is_cat;														//	make the final variables from the temporary ones
 		final String[]	suffix_array = temp_suffix_array;								// 				
 		final String 	prefix = temp_prefix;
-		
+
 		if ( RoiManager.getInstance() == null )	new RoiManager(); 							//  if the ROI Manager is not open, open it!
 		final RoiManager	rm 	=	RoiManager.getInstance();								//	and get it as rm
 
@@ -103,15 +100,14 @@ public class Parallel_Roi_Creator implements PlugIn {
 							roi_name = "ROI-"+IJ.pad(i,6);																// otherwise by default the name will be ROI-nbr
 						}
 						//IJ.log("Roi "+i+"="+ x_center +", "+ y_center +", radius = " + radius+ ", name "+roi_name);
-						
+
 						Roi roi;						
 						if (Float.isNaN(diameter)){
-							roi = new PointRoi( x_center , y_center) ;			//	define the roi as a point
+							roi = new PointRoi( x_center , y_center) ;													//	define the roi as a point
 						}else{
-							roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;			//	define the roi
+							roi = new OvalRoi( (x_center - radius) , (y_center - radius), diameter, diameter) ;			//	define the roi as a circle
 						}
-						
-						
+
 						roi.setName(roi_name);																			//	and set its name	
 						rm.addRoi(roi);																					//  before creating it
 					}
@@ -187,6 +183,6 @@ public class Parallel_Roi_Creator implements PlugIn {
 		// run the plugin
 		IJ.runPlugIn(clazz.getName(), "");
 		//IJ.runPlugIn(clazz.getName(), "rois=categ1,categ2,categ3");
-		
+
 	}
 }
