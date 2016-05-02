@@ -1,8 +1,5 @@
 package ch.biop.epfl;
 
-import java.util.List;
-import java.util.LinkedList;
-
 public class Parallel {
 	/** Create a Thread[] array as large as the number of processors available. 
 	 * From Stephan Preibisch's Multithreading.java class. See: 

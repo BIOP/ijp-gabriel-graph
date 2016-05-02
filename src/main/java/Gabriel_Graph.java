@@ -10,8 +10,6 @@ import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import ch.biop.epfl.Parallel;
@@ -20,14 +18,10 @@ import ij.ImageJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
 import ij.gui.Line;
-import ij.gui.OvalRoi;
 import ij.gui.Overlay;
-import ij.gui.PointRoi;
 import ij.gui.Roi;
 import ij.measure.ResultsTable;
 import ij.plugin.PlugIn;
-import ij.plugin.frame.RoiManager;
-import ch.biop.epfl.Parallel;
 /**
  * Gabriel Graph class to recover a results table with all neighbors from a Gabriel Graph
  * inspired from http://imagej.1557.x6.nabble.com/Delaunay-Voronoi-intersected-with-boundary-td5016272.html
@@ -67,7 +61,7 @@ public class Gabriel_Graph implements PlugIn {
 	}
 	
 	
-	private ResultsTable getGabrielGraph(final ImagePlus imp, final ArrayList<Point2D> positions, boolean is_show_overlay, boolean is_parallel) {
+	private ResultsTable getGabrielGraph(final ImagePlus imp, final ArrayList<Point2D> positions, final boolean is_show_overlay, final boolean is_parallel) {
 		// Prepare parallel processing, each core will process one point
 		
 		final AtomicInteger ap = new AtomicInteger(0);
