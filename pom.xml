@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>net.imagej</groupId>
 		<artifactId>pom-imagej</artifactId>
-		<version>7.0.0</version>
+		<version>16.6.0</version>
 		<relativePath />
 	</parent>
 
@@ -18,17 +18,17 @@
 
 	<developers>
 		<developer>
-			<id>dscho</id>
-			<name>Johannes Schindelin</name>
-			<email>johannes.schindelin@gmx.de</email>
-			<url>http://loci.wisc.edu/people/johannes-schindelin</url>
-			<organization>UW-Madison LOCI</organization>
-			<organizationUrl>http://loci.wisc.edu/</organizationUrl>
+			<id>oburri</id>
+			<name>Olivier Burri</name>
+			<email>olivier.burri@epfl.ch</email>
+			<url>http://biop.epfl.ch</url>
+			<organization>EPFL BioImaging And Optics Platform BIOP</organization>
+			<organizationUrl>http://epfl.ch</organizationUrl>
 			<roles>
-				<role>architect</role>
-				<role>developer</role>
+				<role>Image Analyst</role>
+				<role>Biotech Engineer</role>
 			</roles>
-			<timezone>-6</timezone>
+			<timezone>+1</timezone>
 		</developer>
 	</developers>
 
